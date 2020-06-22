@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>BBL - @InjectResources - Adelean</title>
+    <link rel="stylesheet" type="text/css" href="build/build.css">
+  </head>
+  <body>
+    <article class="deck">
+      <section>
+        <h1>BBL - @InjectResources - Adelean</h1><a href="https://github.com/hosuaby/inject-resources">github.com/hosuaby/inject-resources</a>
+      </section>
+      <section>
+        <h3>Importer le contenu d'une ressource en Java est plus compliqué que ça ne devrais être.</h3>
+      </section>
+      <section>
+        <h2>Lécture d'une ressource (Java pure)</h2><font size="-1">
+          <pre><code class="language-java">String resourcePath = "com/adelean/junit/jupiter/resource.txt";
+ClassLoader classLoader = getClass().getClassLoader();
+
+StringBuilder textBuilder = new StringBuilder();
+
+try (InputStream resourceAsStream = classLoader.getResourceAsStream(resourcePath);
+     InputStreamReader streamReader = new InputStreamReader(resourceAsStream);
+     BufferedReader bufferedReader = new BufferedReader(streamReader)) {
+    int c = 0;
+    while ((c = bufferedReader.read()) != -1) {
+        textBuilder.append((char) c);
+    }
+} catch (IOException ioException) {
+    // handle exception
+}
+
+String resourceContent = textBuilder.toString();
+// resourceContent == "The quick brown fox jumps over the lazy dog."
+</code></pre></font>
+      </section>
+      <section>
+        <h2>Lécture d'une ressource (Guava)</h2><font size="-1">
+          <pre><code class="language-java">URL url = Resources.getResource("com/adelean/junit/jupiter/resource.txt");
+try {
+    String resourceContent = Resources.toString(url, StandardCharsets.UTF_8);
+} catch (IOException ioException) {
+    // handle exception
+}
+</code></pre></font>
+      </section>
+      <section>
+        <ul class="build build-items">
+          <li>Ressource ≠ fichier</li>
+          <li>Ressource ≈ import</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Vous ne faitez pas ça, n'est ce pas ?</h3><font size="-1">
+          <pre><code class="language-java">try {
+    import java.util.ArrayList;
+} catch (IOException ioException) {
+    // handle exception
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h3>Peut-on faire plus simple ?</h3>
+      </section>
+      <section>
+        <h4>Avec @InjectResources</h4>
+        <p>Contenu de <strong>/com/adelean/junit/jupiter/resource.txt</strong>:</p><font size="-1">
+          <pre><code class="language-text">The quick brown fox jumps over the lazy dog.</code></pre></font><font size="-1">
+          <pre><code class="language-java">@TestWithResources  // <-- ajouter l'extention
+class InjectTextResourcesTests {
+
+    @GivenTextResource("/com/adelean/junit/jupiter/resource.txt")
+    String resourceContent;   // <-- injecter le contenu de la resource
+
+    @Test
+    public void testInjectTextIntoStringInstanceField() {
+        assertThat(resourceContent)
+                .isEqualTo("The quick brown fox jumps over the lazy dog.");
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <p>Contenu de <strong>/com/adelean/junit/jupiter/fibonacci.bin</strong> (binaire):</p><font size="-1">
+          <pre><code class="language-text">1 1 2 3 5 8 13 21 34 55 89</code></pre></font><font size="-1">
+          <pre><code class="language-java">@TestWithResources
+class InjectBinaryResourcesTests {
+
+    @GivenBinaryResource("/com/adelean/junit/jupiter/fibonacci.bin")
+    byte[] fibonacci;
+
+    @Test
+    public void testInjectBinaryContentIntoByteArrayInstanceField() {
+        assertThat(fibonacci)
+                .contains(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89);
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <p>Contenu de <strong>/com/adelean/junit/jupiter/db.properties</strong>:</p><font size="-1">
+          <pre><code class="language-properties">db.user=hosuaby
+db.password=password
+db.url=localhost</code></pre></font><font size="-1">
+          <pre><code class="language-java">@TestWithResources
+class InjectPropertiesResourcesTests {
+
+    @GivenPropertiesResource("/com/adelean/junit/jupiter/db.properties")
+    Properties dbProperties;
+
+    @Test
+    public void testInjectTextIntoStringInstanceField() {
+        assertThat(dbProperties)
+                .containsEntry("db.user", "hosuaby")
+                .containsEntry("db.password", "password")
+                .containsEntry("db.url", "localhost");
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Injecter contenu JSON avec Jackson</h5><font size="-1">
+          <pre><code class="language-java">@TestWithResources
+class TestsWithJackson {
+
+    @WithJacksonMapper
+    ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
+    /* JSON */
+    @GivenJsonResource("/com/adelean/junit/jupiter/sponge-bob.json")
+    Map< String, Object > jsonAsMap;
+
+    @GivenJsonResource("/com/adelean/junit/jupiter/sponge-bob.json")
+    JsonNode jsonNode;
+
+    @GivenJsonResource("/com/adelean/junit/jupiter/sponge-bob.json")
+    Person spongeBob;
+
+    /* JSONL */
+    @GivenJsonLinesResource("/com/adelean/junit/jupiter/logs.jsonl")
+    Log[] logsAsArray;
+
+    @GivenJsonLinesResource("/com/adelean/junit/jupiter/logs.jsonl")
+    Collection< Log > logsAsCollection;
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Example avec un test de A2</h5><font size="-1">
+          <pre><code class="language-java">@TestWithResources
+class CatalogConfigTest {
+
+    @WithJacksonMapper
+    ObjectMapper objectMapper = JacksonUtils.objectMapper();
+    
+    @Test
+    void testGetUsedGlobalSynonyms(
+            @GivenJsonResource("com/adelean/a2/model/config/v2_frontal_648.config.json")
+            CatalogConfig catalogConfig) {
+        SynonymDictionary dictionary = catalogConfig.getAllSynonyms();
+        
+        assertTrue(dictionary.areSynonyms("rasage", "raser"));
+        assertTrue(dictionary.areSynonyms("raser", "rasage"));
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Parseur partagé par plusiers classes des tests (héritage)</h5><font size="-1">
+          <pre><code class="language-java">abstract class SuperClassWithParser {
+
+    @WithJacksonMapper
+    ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+}
+
+@TestWithResources
+class TestsSubclass1 extends SuperClassWithParser {
+
+    @GivenJsonLinesResource(from = "/com/adelean/junit/jupiter/logs.jsonl")
+    Collection< Log > logsAsCollection;
+}
+
+@TestWithResources
+class TestsSubclass2 extends SuperClassWithParser {
+
+    @GivenJsonResource("com/adelean/a2/model/config/v2_frontal_648.config.json")
+    CatalogConfig catalog648Config;
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Parseur partagé par plusiers classes des tests (Tests Advice)</h5><font size="-1">
+          <pre><code class="language-java">@TestsAdvice
+public final class GlobalObjectMapperProvider {
+
+    @WithJacksonMapper
+    public ObjectMapper globalObjectMapper() {
+        return JacksonUtils.objectMapper();
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Parseurs nommés</h5><font size="-1">
+          <pre><code class="language-java">@TestWithResources
+class TestsWithNamedParser {
+
+    @WithJacksonMapper("custom-mapper")
+    ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+    
+    @GivenJsonLinesResource(
+        from = "/com/adelean/junit/jupiter/logs.jsonl",
+        jacksonMapper = "custom-mapper")
+    Collection< Log > logsAsCollection;
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h5>Parsing des properties dans POJO avec <em>jackson-dataformat-properties</em></h5><font size="-2">
+          <pre><code class="language-java">class JavaDslTests {
+    JavaPropsSchema SCHEMA = JavaPropsSchema
+            .emptySchema()
+            .withoutPathSeparator();
+    ObjectReader READER = new JavaPropsMapper()
+            .readerFor(DbConnection.class)
+            .with(SCHEMA);
+    String PATH_PREFIX = "/com/adelean/junit/jupiter";
+    
+    static class DbConnection {
+        @JsonProperty("db.user") String user;
+        @JsonProperty("db.password") String password;
+        @JsonProperty("db.url") String url;
+    }
+    
+    @Test
+    public void testResourceAsStream() {
+        // @InjectResources Java DSL
+        var dbConnection = resource()
+                .withPath(PATH_PREFIX, "db.properties")
+                .asInputStream()
+                .parseChecked(READER::readValue);
+
+        assertThat(dbConnection)
+                .isNotNull()
+                .hasFieldOrPropertyWithValue("user", "hosuaby")
+                .hasFieldOrPropertyWithValue("password", "password")
+                .hasFieldOrPropertyWithValue("url", "localhost");
+    }
+}
+</code></pre></font>
+      </section>
+      <section>
+        <h2>A venir:</h2>
+        <ul class="build build-items">
+          <li>Support XML (probablement JAX-B)</li>
+          <li>Support YAML avec SnakeYAML</li>
+          <li>Extension JUnit 4</li>
+          <li>Caching pour le resources parsés</li>
+        </ul>
+      </section>
+      <section>
+        <h1>La fin :)</h1>
+        <h3>(Merci pour votre attention!)</h3>
+        <p>P.S. N'oubliez pas à visiter:</p><a href="https://github.com/hosuaby/inject-resources">github.com/hosuaby/inject-resources</a>
+      </section>
+    </article>
+    <script src="build/build.js"></script>
+  </body>
+</html>
