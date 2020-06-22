@@ -8,6 +8,10 @@ var hash = require('bespoke-hash');
 var prism = require('bespoke-prism');
 var extern = require('bespoke-extern');
 
+require('prismjs');
+require('prismjs/components/prism-java')
+require('prismjs/components/prism-properties')
+
 // Bespoke.js
 bespoke.from({ parent: 'article.deck', slides: 'section' }, [
   classes(),
